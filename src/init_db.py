@@ -1,75 +1,38 @@
-import sqlite3
 import os
+from pymongo import MongoClient
+from datetime import datetime
 from pathlib import Path
 
 def init_database():
-    # Create database directory if it doesn't exist
-    db_dir = Path("data")
-    db_dir.mkdir(exist_ok=True)
+    # Get MongoDB connection string from environment variable or use default
+    mongo_uri = os.environ.get("MONGODB_URI", "mongodb://localhost:27017/")
+    db_name = os.environ.get("MONGODB_DB_NAME", "learning_assistant")
     
-    db_path = db_dir / "auth.db"
+    # Connect to MongoDB
+    client = MongoClient(mongo_uri)
+    db = client[db_name]
     
-    conn = sqlite3.connect(db_path)
-    c = conn.cursor()
+    # Create collections (equivalent to tables in SQL)
+    users = db.users
+    chats = db.chats
+    chat_messages = db.chat_messages
+    resources = db.resources
+    quizzes = db.quizzes
+    roadmaps = db.roadmaps
     
-    # Create users table
-    c.execute('''CREATE TABLE IF NOT EXISTS users
-                (username TEXT PRIMARY KEY,
-                 password TEXT,
-                 created_at TIMESTAMP,
-                 last_login TIMESTAMP)''')
+    # Create indexes for better query performance
+    users.create_index("username", unique=True)
+    chats.create_index("username")
+    chats.create_index("chat_id", unique=True)
+    chat_messages.create_index("chat_id")
+    resources.create_index("username")
+    resources.create_index("resource_id", unique=True)
+    quizzes.create_index("username")
+    quizzes.create_index("quiz_id", unique=True)
+    roadmaps.create_index("username")
+    roadmaps.create_index("id", unique=True)
     
-    # Create chats table
-    c.execute('''CREATE TABLE IF NOT EXISTS chats
-                (chat_id TEXT PRIMARY KEY,
-                 username TEXT,
-                 title TEXT,
-                 created_at TIMESTAMP,
-                 last_updated TIMESTAMP,
-                 FOREIGN KEY (username) REFERENCES users(username))''')
-    
-    # Create chat_messages table
-    c.execute('''CREATE TABLE IF NOT EXISTS chat_messages
-                (id INTEGER PRIMARY KEY AUTOINCREMENT,
-                 chat_id TEXT,
-                 role TEXT,
-                 content TEXT,
-                 timestamp TIMESTAMP,
-                 FOREIGN KEY (chat_id) REFERENCES chats(chat_id))''')
-    
-    # Create resources table
-    c.execute('''CREATE TABLE IF NOT EXISTS resources
-                (resource_id TEXT PRIMARY KEY,
-                 username TEXT,
-                 query TEXT,
-                 content TEXT,
-                 created_at TIMESTAMP,
-                 FOREIGN KEY (username) REFERENCES users(username))''')
-    
-    # Create quizzes table
-    c.execute('''CREATE TABLE IF NOT EXISTS quizzes
-                (quiz_id TEXT PRIMARY KEY,
-                 username TEXT,
-                 topic TEXT,
-                 questions TEXT,
-                 score INTEGER,
-                 submitted BOOLEAN,
-                 created_at TIMESTAMP,
-                 FOREIGN KEY (username) REFERENCES users(username))''')
-    
-    # Create roadmaps table
-    c.execute('''CREATE TABLE IF NOT EXISTS roadmaps
-                (id TEXT PRIMARY KEY,
-                 username TEXT,
-                 topic TEXT,
-                 content TEXT,
-                 created_at TIMESTAMP,
-                 FOREIGN KEY (username) REFERENCES users(username))''')
-    
-    conn.commit()
-    conn.close()
-    
-    print("Database initialized successfully!")
+    print("MongoDB database initialized successfully!")
 
 if __name__ == "__main__":
     init_database()
