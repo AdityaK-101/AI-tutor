@@ -1,0 +1,6 @@
+streamlit
+pymongo
+python-dotenv
+requests
+transformers
+PyJWT==2.8.0 

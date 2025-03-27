@@ -1,0 +1,27 @@
+# Virtual Environment
+venv/
+env/
+.env
+
+# Python
+__pycache__/
+*.py[cod]
+*.so
+
+# MongoDB
+/data/
+/db/
+
+# Cache
+.cache/
+.streamlit/
+
+# IDE
+.vscode/
+.idea/
+
+# Logs
+*.log
+
+# Environment variables
+.env
