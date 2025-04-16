@@ -73,11 +73,17 @@ class ChatInterface:
             # Format the conversation history
             conversation_context = ""
             if conversation_history:
-                conversation_context = "Previous conversation:\n"
-                # Include the last 5 exchanges for context
-                for msg in conversation_history[-10:]:  # Get last 10 messages (5 exchanges)
-                    role = "User" if msg["role"] == "user" else "Assistant"
-                    conversation_context += f"{role}: {msg['content']}\n\n"
+                try:
+                    conversation_context = "Previous conversation:\n"
+                    # Include the last 5 exchanges for context
+                    for msg in conversation_history[-10:]:  # Get last 10 messages (5 exchanges)
+                        if not isinstance(msg, dict) or "role" not in msg or "content" not in msg:
+                            continue  # Skip invalid messages
+                        role = "User" if msg["role"] == "user" else "Assistant"
+                        conversation_context += f"{role}: {msg['content']}\n\n"
+                except Exception as e:
+                    print(f"Error formatting conversation history: {e}")
+                    # Continue with empty context if there's an error
             
             # Create the full prompt with context
             formatted_prompt = f"""[INST] You are a coding tutor. Use the following conversation history as context for your response:
@@ -120,9 +126,11 @@ class ChatInterface:
                 return response_text
                 
             except Exception as e:
+                print(f"Error processing response: {e}")
                 return f"Error processing response: {str(e)}"
                 
         except Exception as e:
+            print(f"An unexpected error occurred: {e}")
             return f"An unexpected error occurred: {str(e)}"
 
     def _format_response(self, response: str) -> str:

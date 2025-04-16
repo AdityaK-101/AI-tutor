@@ -219,22 +219,35 @@ class Auth:
 
     def get_chat_history(self, chat_id: str):
         """Get messages for a specific chat"""
-        conn = sqlite3.connect(self.db_path)
-        c = conn.cursor()
-        c.execute("""SELECT role, content FROM chat_messages 
-                     WHERE chat_id = ? 
-                     ORDER BY timestamp ASC""", (chat_id,))
-        messages = [{"role": role, "content": content} for role, content in c.fetchall()]
-        conn.close()
-        return messages
+        conn = None
+        try:
+            conn = sqlite3.connect(self.db_path)
+            c = conn.cursor()
+            c.execute("""SELECT role, content FROM chat_messages 
+                         WHERE chat_id = ? 
+                         ORDER BY timestamp ASC""", (chat_id,))
+            messages = [{"role": role, "content": content} for role, content in c.fetchall()]
+            return messages
+        except Exception as e:
+            print(f"Error retrieving chat history: {e}")
+            return []
+        finally:
+            if conn:
+                conn.close()
 
     def update_chat_title(self, chat_id: str, new_title: str):
         """Update the title of a chat"""
-        conn = sqlite3.connect(self.db_path)
-        c = conn.cursor()
-        c.execute("UPDATE chats SET title = ? WHERE chat_id = ?", (new_title, chat_id))
-        conn.commit()
-        conn.close()
+        conn = None
+        try:
+            conn = sqlite3.connect(self.db_path)
+            c = conn.cursor()
+            c.execute("UPDATE chats SET title = ? WHERE chat_id = ?", (new_title, chat_id))
+            conn.commit()
+        except Exception as e:
+            print(f"Error updating chat title: {e}")
+        finally:
+            if conn:
+                conn.close()
 
     def delete_chat(self, chat_id: str):
         """Delete a chat and all its messages"""

@@ -58,18 +58,21 @@ def main():
         st.write("Choose a feature:")
         
         # Use a single column for all buttons
-        if st.button("Chat Assistant", use_container_width=True):
-            page = "Chat Assistant"
-        if st.button("Quiz System", use_container_width=True):
-            page = "Quiz System"
-        if st.button("Resource Finder", use_container_width=True):
-            page = "Resource Finder"
-        if st.button("Learning Roadmap", use_container_width=True):
-            page = "Learning Roadmap"
+        if st.button("Chat Assistant", use_container_width=True, key="nav_chat"):
+            st.session_state.current_page = "Chat Assistant"
+            st.rerun()
+        if st.button("Quiz System", use_container_width=True, key="nav_quiz"):
+            st.session_state.current_page = "Quiz System"
+            st.rerun()
+        if st.button("Resource Finder", use_container_width=True, key="nav_resource"):
+            st.session_state.current_page = "Resource Finder"
+            st.rerun()
+        if st.button("Learning Roadmap", use_container_width=True, key="nav_roadmap"):
+            st.session_state.current_page = "Learning Roadmap"
+            st.rerun()
         
-        # If no button was clicked, use the previous page or None
-        if 'page' not in locals():
-            page = previous_page
+        # Get the current page from session state
+        page = st.session_state.get('current_page')
         
         # Reset states when switching features
         if page != previous_page:
@@ -81,8 +84,6 @@ def main():
                 st.session_state.current_roadmap = None
                 st.session_state.current_roadmap_id = None
                 st.session_state.creating_roadmap = False
-            
-            st.session_state.current_page = page
             
             if previous_page is not None:  # Only rerun if actually switching pages
                 st.rerun()
@@ -167,7 +168,15 @@ def main():
                 # Get and display AI response
                 with st.chat_message("assistant"):
                     with st.spinner("Thinking..."):
-                        response = chat_interface.get_ai_response(prompt, st.session_state.messages)
+                        # Format conversation history for the chat interface
+                        formatted_history = []
+                        for msg in st.session_state.messages:
+                            formatted_history.append({
+                                "role": msg["role"],
+                                "content": msg["content"]
+                            })
+                        
+                        response = chat_interface.get_ai_response(prompt, formatted_history)
                         st.markdown(response)
                 
                 # Save AI response
