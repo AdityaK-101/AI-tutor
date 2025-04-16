@@ -2,7 +2,7 @@ import requests
 import os
 import sys
 import time
-from typing import Dict, Any
+from typing import Dict, Any, List, Tuple
 
 # Add parent directory to path
 sys.path.append(os.path.dirname(os.path.dirname(__file__)))
@@ -58,10 +58,31 @@ class ChatInterface:
                     continue
                 return f"Network error occurred: {str(e)}"
     
-    def get_ai_response(self, prompt: str) -> str:
+    def get_ai_response(self, prompt: str, conversation_history: List[Dict[str, str]] = None) -> str:
+        """
+        Get AI response with conversation context
+        
+        Args:
+            prompt: The user's current message
+            conversation_history: List of previous messages in the format [{"role": "user/assistant", "content": "message"}]
+        
+        Returns:
+            The AI's response
+        """
         try:
-            # Simple, direct prompt format
-            formatted_prompt = f"""[INST] You are a coding tutor. Answer this question directly and professionally:
+            # Format the conversation history
+            conversation_context = ""
+            if conversation_history:
+                conversation_context = "Previous conversation:\n"
+                # Include the last 5 exchanges for context
+                for msg in conversation_history[-10:]:  # Get last 10 messages (5 exchanges)
+                    role = "User" if msg["role"] == "user" else "Assistant"
+                    conversation_context += f"{role}: {msg['content']}\n\n"
+            
+            # Create the full prompt with context
+            formatted_prompt = f"""[INST] You are a coding tutor. Use the following conversation history as context for your response:
+
+{conversation_context}Current question:
 
 {prompt}
 

@@ -53,11 +53,23 @@ def main():
         
         st.subheader("Navigation")
         previous_page = st.session_state.get('current_page')
-        page = st.radio(
-            "Choose a feature",
-            ["Chat Assistant", "Quiz System", "Resource Finder", "Learning Roadmap"],
-            index=None  # No feature selected by default
-        )
+        
+        # Replace radio buttons with individual buttons
+        st.write("Choose a feature:")
+        
+        # Use a single column for all buttons
+        if st.button("Chat Assistant", use_container_width=True):
+            page = "Chat Assistant"
+        if st.button("Quiz System", use_container_width=True):
+            page = "Quiz System"
+        if st.button("Resource Finder", use_container_width=True):
+            page = "Resource Finder"
+        if st.button("Learning Roadmap", use_container_width=True):
+            page = "Learning Roadmap"
+        
+        # If no button was clicked, use the previous page or None
+        if 'page' not in locals():
+            page = previous_page
         
         # Reset states when switching features
         if page != previous_page:
@@ -155,7 +167,7 @@ def main():
                 # Get and display AI response
                 with st.chat_message("assistant"):
                     with st.spinner("Thinking..."):
-                        response = chat_interface.get_ai_response(prompt)
+                        response = chat_interface.get_ai_response(prompt, st.session_state.messages)
                         st.markdown(response)
                 
                 # Save AI response
