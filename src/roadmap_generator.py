@@ -2,31 +2,56 @@ import streamlit as st
 from typing import Optional
 
 class RoadmapGenerator:
+    """
+    Generates structured learning roadmaps for various programming topics.
+
+    This class provides pre-defined roadmaps for common topics like Python (basics,
+    web development, data science), JavaScript, and general web development.
+    For other topics, it generates a generic, structured roadmap.
+    """
     def __init__(self, db):
-        self.db = db
+        """
+        Initializes the RoadmapGenerator.
+
+        Args:
+            db: An instance of the Database class. While the current roadmap generation
+                is primarily template-based, the db instance is kept for potential
+                future enhancements (e.g., fetching resources to embed in roadmaps).
+        """
+        self.db = db # Database instance, currently unused but kept for future resource integration
 
     def generate_roadmap(self, topic: str) -> str:
         """
-        Generate a detailed and specific learning roadmap based on the user's topic.
-        Returns formatted markdown string with the roadmap.
+        Generates a detailed learning roadmap based on the user's specified topic.
+
+        It checks for keywords in the topic to provide specialized roadmaps for
+        Python (basics, web dev, data science), JavaScript, and general web development.
+        If no specific template matches, it returns a generic roadmap structure.
+
+        Args:
+            topic: The learning topic or area of interest (e.g., "Python for web development").
+
+        Returns:
+            A markdown formatted string containing the learning roadmap.
         """
-        # Convert topic to lowercase for easier matching
+        # Convert the input topic to lowercase for case-insensitive keyword matching
         topic_lower = topic.lower()
         
+        # Check for keywords in the topic to determine which specific roadmap to return
         if "python" in topic_lower:
-            if "web" in topic_lower:
+            if "web" in topic_lower: # Python for Web Development
                 return self._python_web_roadmap()
-            elif "data science" in topic_lower or "machine learning" in topic_lower:
+            elif "data science" in topic_lower or "machine learning" in topic_lower: # Python for Data Science / ML
                 return self._python_data_science_roadmap()
-            else:
+            else: # General Python Basics
                 return self._python_basics_roadmap()
-        elif "javascript" in topic_lower or "js" in topic_lower:
+        elif "javascript" in topic_lower or "js" in topic_lower: # JavaScript
             return self._javascript_roadmap()
-        elif "web" in topic_lower:
+        elif "web" in topic_lower: # General Web Development (could be front-end or full-stack)
             return self._web_development_roadmap()
         else:
-            # For topics we don't have a specific template for,
-            # we should still provide a structured response
+            # If no specific keywords are matched, provide a generic roadmap structure.
+            # This ensures some guidance is always offered, even for less common topics.
             return f"""
 ## Learning Roadmap for {topic}
 
@@ -57,6 +82,12 @@ class RoadmapGenerator:
 """
 
     def _python_basics_roadmap(self) -> str:
+        """
+        Generates a learning roadmap for Python basics.
+
+        Returns:
+            A markdown formatted string detailing a roadmap for learning Python fundamentals.
+        """
         return """
 ## Python Programming Roadmap
 
@@ -131,6 +162,15 @@ class RoadmapGenerator:
 """
 
     def _python_web_roadmap(self) -> str:
+        """
+        Generates a learning roadmap for Python web development.
+
+        Covers prerequisites, popular frameworks (Flask, Django), databases, API development,
+        and advanced topics.
+
+        Returns:
+            A markdown formatted string detailing the Python web development roadmap.
+        """
         return """
 ## Python Web Development Roadmap
 
@@ -208,6 +248,16 @@ class RoadmapGenerator:
 """
 
     def _python_data_science_roadmap(self) -> str:
+        """
+        Generates a learning roadmap for Python data science.
+
+        Includes sections on Python libraries (NumPy, Pandas, visualization tools),
+        statistics, machine learning (scikit-learn), deep learning (TensorFlow/Keras, PyTorch),
+        big data tools, and MLOps.
+
+        Returns:
+            A markdown formatted string detailing the Python data science roadmap.
+        """
         return """
 ## Python Data Science Roadmap
 
@@ -296,17 +346,100 @@ class RoadmapGenerator:
 """
 
     def _javascript_roadmap(self) -> str:
-        # Add detailed JavaScript roadmap here
-        pass
+        """
+        Placeholder for a detailed JavaScript learning roadmap.
+
+        Returns:
+            An empty string or a basic placeholder message.
+            (Currently returns None due to `pass`)
+        """
+        # TODO: Implement a detailed JavaScript roadmap similar to the Python ones.
+        # This could cover vanilla JS, frameworks (React, Angular, Vue), Node.js, etc.
+        return """
+## JavaScript Learning Roadmap (Placeholder)
+
+### 1. JavaScript Fundamentals
+- Basic syntax, variables, data types
+- Operators and control flow
+- Functions and scope
+- DOM manipulation
+
+### 2. Intermediate JavaScript
+- ES6+ features (arrow functions, classes, modules)
+- Asynchronous JavaScript (callbacks, Promises, async/await)
+- Error handling
+
+### 3. Frontend Frameworks (Choose one or more)
+- React.js / Angular / Vue.js
+
+### 4. Backend Development (Optional, with Node.js)
+- Node.js and Express.js
+- APIs and databases
+
+### 5. Tools and Best Practices
+- Git, npm/yarn, webpack/parcel
+- Testing (Jest, Mocha)
+- Debugging techniques
+"""
 
     def _web_development_roadmap(self) -> str:
-        # Add detailed web development roadmap here
-        pass
+        """
+        Placeholder for a detailed general web development learning roadmap.
+
+        Returns:
+            A markdown formatted string with a placeholder web development roadmap.
+        """
+        # TODO: Implement a comprehensive web development roadmap.
+        # This should cover HTML, CSS, JavaScript, frontend/backend concepts, databases, etc.
+        return """
+## Web Development Learning Roadmap (Placeholder)
+
+### 1. Core Frontend Technologies
+- HTML5 (Structure)
+- CSS3 (Styling, Layouts - Flexbox, Grid)
+- JavaScript (Interactivity, DOM Manipulation)
+
+### 2. Version Control
+- Git and GitHub/GitLab
+
+### 3. Frontend Frameworks/Libraries (Choose one)
+- React.js
+- Angular
+- Vue.js
+
+### 4. Backend Development (Choose a language/framework)
+- Node.js with Express.js (JavaScript)
+- Python with Django/Flask
+- Ruby on Rails
+- Java with Spring
+- PHP with Laravel
+
+### 5. Databases (Choose based on backend)
+- SQL (PostgreSQL, MySQL)
+- NoSQL (MongoDB, Firebase)
+
+### 6. APIs and Communication
+- RESTful APIs
+- GraphQL (Optional)
+
+### 7. Deployment and DevOps Basics
+- Hosting platforms (Netlify, Vercel, Heroku, AWS)
+- Basic CI/CD concepts
+- Docker (Optional)
+
+### 8. Web Security Fundamentals
+- OWASP Top 10
+- HTTPS
+- CORS
+"""
     
     def render(self):
         """
-        This method is kept for compatibility but now just shows a welcome message
-        The main interaction happens through the chat interface
+        Renders a welcome message for the Learning Roadmap Generator in Streamlit.
+
+        This method is primarily for displaying introductory text. The actual roadmap
+        generation is typically triggered via other interactions (e.g., chat input
+        in the main application).
         """
         st.markdown("""
         # Learning Roadmap Generator
@@ -320,22 +453,44 @@ class RoadmapGenerator:
         """)
     
     def _generate_roadmap(self, path, experience):
-        steps = self.learning_paths[path]
+        """
+        Helper method to generate roadmap steps and display them.
+        (Currently not directly used by the main generate_roadmap but kept for potential future use with more dynamic roadmap generation,
+         possibly integrating `learning_paths` if that was an intended class attribute)
+
+        Args:
+            path: The specific learning path (e.g., "Python Basics").
+            experience: The user's experience level (e.g., "beginner").
+        """
+        # This method seems to assume a `self.learning_paths` attribute which is not defined.
+        # If this method were to be used, `self.learning_paths` would need to be initialized,
+        # likely as a dictionary mapping paths to lists of steps.
+        # Example: self.learning_paths = {"Python Basics": ["Step 1", "Step 2"], ...}
+
+        # The following line would raise an AttributeError as learning_paths is not defined.
+        # steps = self.learning_paths[path]
         
         st.subheader(f"Your {path} Learning Roadmap")
         st.write(f"Based on your {experience.lower()} experience level")
         
-        for i, step in enumerate(steps, 1):
-            with st.expander(f"Step {i}: {step}"):
-                # Get relevant resources from database
-                resources = self.db.get_resources({"topics": step.lower()})
+        # Mock steps for demonstration if learning_paths was defined
+        mock_steps = ["Understand Variables", "Learn Control Flow", "Practice Functions"]
+        steps_to_display = mock_steps # Replace with `steps` if learning_paths is implemented
+
+        for i, step_name in enumerate(steps_to_display, 1):
+            with st.expander(f"Step {i}: {step_name}"):
+                # Attempt to get relevant resources from the database based on the step name (converted to topic)
+                # This part demonstrates how DB integration could work if resources are tagged by topic.
+                # resources = self.db.get_resources({"topics": step_name.lower().replace(" ", "_")})
                 
                 st.write("**Key Concepts to Learn:**")
-                st.write("- Concept 1")
-                st.write("- Concept 2")
-                st.write("- Concept 3")
+                # These would ideally be more specific to the step_name
+                st.write(f"- Key concept A for {step_name}")
+                st.write(f"- Key concept B for {step_name}")
                 
-                if resources:
-                    st.write("**Recommended Resources:**")
-                    for resource in resources:
-                        st.write(f"- [{resource['title']}]({resource['url']})") 
+                # if resources:
+                #     st.write("**Recommended Resources:**")
+                #     for resource in resources:
+                #         st.write(f"- [{resource['title']}]({resource['url']})")
+                # else:
+                #     st.write("No specific resources found in DB for this step. Generic advice: search online documentation.")

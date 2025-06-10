@@ -2,13 +2,37 @@ import json
 import streamlit as st
 
 class QuizSystem:
+    """
+    Manages quiz generation, display, and scoring within the application.
+
+    This class handles both pre-made and AI-generated quizzes. It interacts
+    with the database to save and retrieve quiz data and uses the chat interface
+    to generate custom quiz questions.
+    """
     def __init__(self, db, chat_interface):
+        """
+        Initializes the QuizSystem.
+
+        Args:
+            db: An instance of the Database class for database interactions.
+            chat_interface: An instance of the ChatInterface class for generating
+                            custom quiz questions.
+        """
         self.db = db
         self.chat_interface = chat_interface
-        self.debug = False  # Just set debug to False by default
+        self.debug = False  # Set to True to see AI prompt and response in Streamlit
 
     def _get_default_questions(self, topic):
-        """Get pre-made questions for a given topic."""
+        """
+        Retrieves pre-made questions for a given topic.
+
+        Args:
+            topic: The topic for which to retrieve questions (e.g., "Python Basics").
+
+        Returns:
+            A list of question dictionaries for the specified topic, or an empty list
+            if the topic is not found.
+        """
         default_questions = {
             "Python Basics": [
                 {
@@ -62,57 +86,68 @@ class QuizSystem:
         return default_questions.get(topic, [])
 
     def _parse_text_response(self, response):
-        """Parse questions from text format response."""
+        """
+        Parses quiz questions from a text-based AI response.
+
+        The AI is prompted to return questions in a specific format. This method
+        extracts the question, options, correct answer, and explanation from that format.
+
+        Args:
+            response: The text response from the AI containing quiz questions.
+
+        Returns:
+            A list of question dictionaries parsed from the response.
+        """
         questions = []
         current_question = None
         current_options = []
         current_answer = None
-        current_explanation = None
+        current_explanation = None # Stores explanation if provided
         
         lines = response.split('\n')
         for line in lines:
             line = line.strip()
             
-            # Skip empty lines
+            # Skip empty or non-relevant lines
             if not line:
                 continue
             
-            # Check for question number and question text
-            if line[0].isdigit() and '.' in line:
-                # Save previous question if exists
+            # Heuristic to identify the start of a new question (e.g., "1. Question text")
+            if line[0].isdigit() and '.' in line and len(line.split('.', 1)) > 1:
+                # If a previous question's data is populated, save it
                 if current_question and current_options and current_answer:
                     questions.append({
                         "question": current_question,
                         "options": current_options,
                         "correct_answer": current_answer,
-                        "explanation": current_explanation or "No explanation provided."
+                        "explanation": current_explanation or "No explanation provided." # Default explanation
                     })
                 
-                # Start new question
+                # Reset variables for the new question
                 current_question = line.split('.', 1)[1].strip()
                 current_options = []
                 current_answer = None
-                current_explanation = None
+                current_explanation = None # Reset explanation for new question
             
-            # Check for options
-            elif line.startswith(('a)', 'b)', 'c)', 'd)', 'A)', 'B)', 'C)', 'D)')):
+            # Heuristic to identify options (e.g., "a) Option text")
+            elif line.startswith(('a)', 'b)', 'c)', 'd)', 'A)', 'B)', 'C)', 'D)')) and len(line) > 2:
                 option = line[2:].strip()
                 current_options.append(option)
             
-            # Check for answer
-            elif line.startswith(('Answer:', 'Correct answer:')):
+            # Heuristic to identify the correct answer line
+            elif line.startswith(('Answer:', 'Correct answer:')) and len(line.split(':', 1)) > 1:
                 answer_text = line.split(':', 1)[1].strip()
-                # Handle different answer formats
-                if answer_text.startswith(('a)', 'b)', 'c)', 'd)', 'A)', 'B)', 'C)', 'D)')):
-                    current_answer = answer_text[2:].strip()
+                # The answer might be prefixed with "a)", "b)", etc. or just be the text
+                if answer_text.startswith(('a)', 'b)', 'c)', 'd)', 'A)', 'B)', 'C)', 'D)')) and len(answer_text) > 2:
+                    current_answer = answer_text[2:].strip() # Extract text after "a) "
                 else:
-                    current_answer = answer_text
+                    current_answer = answer_text # Assume the text itself is the answer
             
-            # Check for explanation
-            elif line.startswith('Explanation:'):
+            # Heuristic to identify the explanation line
+            elif line.startswith('Explanation:') and len(line.split(':', 1)) > 1:
                 current_explanation = line.split(':', 1)[1].strip()
         
-        # Add the last question
+        # Add the last parsed question after the loop finishes
         if current_question and current_options and current_answer:
             questions.append({
                 "question": current_question,
@@ -124,9 +159,24 @@ class QuizSystem:
         return questions
 
     def _generate_quiz_questions(self, topic, num_questions, difficulty):
-        """Generate custom quiz questions using the chat interface."""
+        """
+        Generates custom quiz questions using the chat interface (AI).
+
+        It constructs a detailed prompt for the AI based on the topic, number of questions,
+        and difficulty level, then parses the AI's response.
+
+        Args:
+            topic: The topic for the quiz.
+            num_questions: The number of questions to generate.
+            difficulty: The difficulty level of the quiz (e.g., "Basic", "Intermediate").
+
+        Returns:
+            A list of generated question dictionaries. Falls back to simpler questions
+            if AI generation or parsing fails.
+        """
         try:
-            # Define difficulty-specific requirements
+        try:
+            # Detailed specifications for different difficulty levels to guide the AI
             difficulty_specs = {
                 "Basic": {
                     "description": "Focus on fundamental concepts and simple syntax",
@@ -206,6 +256,7 @@ Explanation: In asynchronous distributed SGD, some workers might compute gradien
                 }
             }
 
+            # Constructing a very specific prompt for the AI to generate questions in a parsable format.
             prompt = f"""Generate {num_questions} multiple-choice questions about {topic} at {difficulty} level.
 
 Difficulty Level: {difficulty}
@@ -235,17 +286,21 @@ Important:
 5. Wrong answers should be plausible but clearly incorrect
 6. Questions should increase in complexity within this difficulty level"""
 
+            # Get response from the AI
             response = self.chat_interface.get_ai_response(prompt)
             
+            # If debugging is enabled, show the raw AI response
             if self.debug:
                 st.code(response, language="text")
             
-            # Parse the response
+            # Parse the AI's text response into a list of question dictionaries
             questions = self._parse_text_response(response)
             
-            # Validate questions
+            # Validate the parsed questions to ensure they meet basic criteria
             validated_questions = []
             for q in questions:
+                # Check if options list exists and has 4 options, question and answer are strings,
+                # and the correct answer is one of the options.
                 if (isinstance(q.get("options"), list) and 
                     len(q.get("options", [])) == 4 and 
                     isinstance(q.get("question"), str) and 
@@ -253,22 +308,35 @@ Important:
                     q.get("correct_answer") in q.get("options", [])):
                     validated_questions.append(q)
                 
+                # Stop if we have enough validated questions
                 if len(validated_questions) == num_questions:
                     break
             
             if validated_questions:
-                return validated_questions
+                return validated_questions # Return successfully validated questions
             
-            # If we get here, something went wrong
-            print("Using fallback questions")
+            # If validation fails or not enough questions are generated, use fallback
+            print(f"AI question generation/validation failed for topic '{topic}'. Using fallback questions.")
             return self._get_fallback_questions(topic, num_questions, difficulty)
 
         except Exception as e:
-            print(f"Error in question generation: {e}")
+            # Catch any other exceptions during generation and resort to fallback
+            print(f"Error in question generation for topic '{topic}': {e}")
             return self._get_fallback_questions(topic, num_questions, difficulty)
 
     def _create_basic_questions(self, topic, num_questions):
-        """Create basic but relevant questions about the topic."""
+        """
+        Creates a set of basic, template-based questions about a given topic.
+
+        This is used as a fallback if more sophisticated question generation fails.
+
+        Args:
+            topic: The topic for the questions.
+            num_questions: The number of basic questions to create.
+
+        Returns:
+            A list of basic question dictionaries.
+        """
         question_templates = [
             {
                 "question": f"What is the primary purpose of {topic}?",
@@ -300,15 +368,29 @@ Important:
         ]
         
         questions = []
-        for i in range(min(num_questions, len(question_templates))):
-            q = question_templates[i].copy()
-            q["correct_answer"] = q["options"][0]
+        # Create as many questions as requested, cycling through templates if needed
+        for i in range(min(num_questions, len(question_templates))): # Ensure we don't go out of bounds
+            q = question_templates[i].copy() # Use a copy to avoid modifying the original template
+            q["correct_answer"] = q["options"][0] # Assume first option is correct for these basic qs
             questions.append(q)
         
         return questions
 
     def _get_fallback_questions(self, topic, num_questions, difficulty):
-        """Generate fallback questions based on difficulty level."""
+        """
+        Generates simple fallback questions based on the topic and difficulty level.
+
+        This method provides a safety net if AI-based question generation fails,
+        ensuring that some questions are always available.
+
+        Args:
+            topic: The topic of the quiz.
+            num_questions: The number of questions to generate.
+            difficulty: The difficulty level.
+
+        Returns:
+            A list of fallback question dictionaries.
+        """
         questions = []
         
         difficulty_templates = {
@@ -366,15 +448,23 @@ Important:
             ]
         }
         
+        # Get templates for the specified difficulty, or default to "Basic"
         templates = difficulty_templates.get(difficulty, difficulty_templates["Basic"])
         for i in range(num_questions):
+            # Cycle through available templates if num_questions > len(templates)
             template = templates[i % len(templates)]
-            questions.append(template.copy())
+            questions.append(template.copy()) # Use a copy
         
         return questions
 
     def _display_quiz(self):
-        """Display the current quiz"""
+        """
+        Displays the current quiz interface in Streamlit.
+
+        This method handles rendering the quiz questions, options, and capturing user answers.
+        It also manages the submission process and displays results.
+        It relies on Streamlit session state to maintain the quiz state.
+        """
         quiz = st.session_state.current_quiz
         
         # Check if quiz exists and has questions
@@ -382,95 +472,107 @@ Important:
             st.warning("No quiz available. Please select a topic and start a quiz.")
             return
         
-        # Initialize score if not present
+        # Initialize score in the quiz dictionary if it's not already there
         if "score" not in quiz:
             quiz["score"] = 0
 
-        # Set quiz_submitted based on the quiz's submitted state from database
+        # Determine if the quiz has been submitted based on data from DB or current session
         st.session_state.quiz_submitted = quiz.get("submitted", False)
         
-        # Display all questions
-        for i, question in enumerate(quiz["questions"]):
-            st.write(f"\n### Question {i + 1}:")
-            st.write(question["question"])
+        # Iterate through each question in the quiz
+        for i, question_data in enumerate(quiz["questions"]):
+            st.write(f"\n### Question {i + 1}:") # Display question number
+            st.write(question_data["question"])   # Display question text
             
-            # Generate a unique key for each question's radio button
+            # Unique key for Streamlit radio button widget for this question
             radio_key = f"quiz_answer_{i}"
             
-            # Display radio buttons with no default selection
-            answer = st.radio(
+            # Display multiple choice options as radio buttons
+            # `index=None` ensures no option is pre-selected.
+            # Radio buttons are disabled if the quiz has already been submitted.
+            user_choice = st.radio(
                 "Choose your answer:",
-                options=question["options"],
+                options=question_data["options"],
                 key=radio_key,
-                index=None,
-                disabled=st.session_state.quiz_submitted
+                index=None, # No default selection
+                disabled=st.session_state.quiz_submitted # Disable if quiz is already submitted
             )
 
-            # If quiz is submitted, show the results for this question
+            # If the quiz has been submitted, display feedback for this question
             if st.session_state.quiz_submitted:
-                user_answer = st.session_state.get(radio_key)
-                if user_answer is None:
+                # Retrieve the user's answer for this question from session state
+                # (st.radio stores its state in st.session_state)
+                submitted_answer = st.session_state.get(radio_key)
+
+                if submitted_answer is None:
                     st.warning("Question not answered")
-                elif user_answer == question["correct_answer"]:
+                elif submitted_answer == question_data["correct_answer"]:
                     st.success("Correct!")
-                    if "explanation" in question:
-                        st.info(f"Explanation: {question['explanation']}")
+                    # Display explanation if available
+                    if "explanation" in question_data and question_data["explanation"]:
+                        st.info(f"Explanation: {question_data['explanation']}")
                 else:
-                    st.error(f"Incorrect. The correct answer was: {question['correct_answer']}")
-                    if "explanation" in question:
-                        st.info(f"Explanation: {question['explanation']}")
+                    st.error(f"Incorrect. The correct answer was: {question_data['correct_answer']}")
+                    # Display explanation if available
+                    if "explanation" in question_data and question_data["explanation"]:
+                        st.info(f"Explanation: {question_data['explanation']}")
             
-            st.divider()
+            st.divider() # Visual separator between questions
         
-        # Add submit button only if quiz hasn't been submitted
+        # Display the "Submit Quiz" button only if the quiz hasn't been submitted yet
         if not st.session_state.quiz_submitted:
-            col1, col2 = st.columns([1, 5])
+            col1, col2 = st.columns([1, 5]) # Layout columns for button
             with col1:
                 if st.button("Submit Quiz", type="primary"):
-                    st.session_state.quiz_submitted = True
+                    st.session_state.quiz_submitted = True # Mark quiz as submitted in session
                     
-                    # Calculate score
-                    score = 0
-                    total_questions = len(quiz["questions"])
+                    # Calculate the score
+                    current_score = 0
+                    total_questions_count = len(quiz["questions"])
                     
-                    for i in range(total_questions):
-                        user_answer = st.session_state.get(f"quiz_answer_{i}")
-                        correct_answer = quiz["questions"][i]["correct_answer"]
-                        if user_answer == correct_answer:
-                            score += 1
+                    for idx in range(total_questions_count):
+                        user_ans = st.session_state.get(f"quiz_answer_{idx}")
+                        correct_ans = quiz["questions"][idx]["correct_answer"]
+                        if user_ans == correct_ans:
+                            current_score += 1
                     
-                    quiz["score"] = score
+                    quiz["score"] = current_score # Update score in the local quiz dict
                     
-                    # Update quiz in database
-                    if "current_quiz_id" in st.session_state:
-                        self.db.auth.update_quiz_score(st.session_state.current_quiz_id, score)
+                    # Update the quiz score and submitted status in the database
+                    if "current_quiz_id" in st.session_state and st.session_state.current_quiz_id:
+                        self.db.auth.update_quiz_score(st.session_state.current_quiz_id, current_score)
                     
-                    # Update session state quiz
+                    # Update the quiz object in session state to reflect submission and score
                     quiz["submitted"] = True
-                    st.session_state.current_quiz = quiz
+                    st.session_state.current_quiz = quiz # Save updated quiz back to session state
                     
-                    st.rerun()
+                    st.rerun() # Rerun the page to display results and disable options
         
-        # Show final score and options after submission
+        # If the quiz is submitted, show the final score and other relevant info
         if st.session_state.quiz_submitted:
-            total_questions = len(quiz["questions"])
-            score = quiz["score"]
+            total_questions_count = len(quiz["questions"])
+            final_score = quiz["score"] # Get score from the quiz dict
             
-            # Update quiz in database
-            if "current_quiz_id" in st.session_state:
-                self.db.auth.update_quiz_score(st.session_state.current_quiz_id, score)
+            # This DB update might be redundant if already done above, but ensures consistency
+            if "current_quiz_id" in st.session_state and st.session_state.current_quiz_id:
+                self.db.auth.update_quiz_score(st.session_state.current_quiz_id, final_score)
             
-            st.success(f"Quiz completed! Your final score: {score}/{total_questions} ({(score/total_questions*100):.1f}%)")
+            st.success(f"Quiz completed! Your final score: {final_score}/{total_questions_count} ({(final_score/total_questions_count*100):.1f}%)")
             
-            # Show statistics
-            answered_questions = sum(1 for i in range(total_questions) 
+            # Show how many questions were answered (useful if skipping is allowed)
+            answered_count = sum(1 for i in range(total_questions_count)
                                    if st.session_state.get(f"quiz_answer_{i}") is not None)
-            st.write(f"Questions answered: {answered_questions}/{total_questions}")
+            st.write(f"Questions answered: {answered_count}/{total_questions_count}")
             
-            # Option to start a new quiz
+            # Option to start a new quiz, which clears the current quiz state
             if st.button("Start New Quiz"):
-                # Clear all quiz-related session state
-                for key in list(st.session_state.keys()):
-                    if key.startswith(("quiz_answer_", "answered_", "quiz_submitted")):
-                        del st.session_state[key]
-                del st.session_state.current_quiz 
+                # Clean up all session state variables related to the current quiz
+                for key_to_delete in list(st.session_state.keys()):
+                    if key_to_delete.startswith(("quiz_answer_", "answered_", "quiz_submitted")):
+                        del st.session_state[key_to_delete]
+                if 'current_quiz' in st.session_state:
+                    del st.session_state.current_quiz
+                # Consider also clearing current_quiz_id and setting creating_quiz = True
+                # st.session_state.creating_quiz = True
+                # st.session_state.current_quiz_id = None
+                st.rerun() # Rerun to go back to quiz creation/selection
